@@ -7,7 +7,7 @@ class Admin(db.Model):
     __tablename__ = "admin"
 
     id = db.Column(db.Integer, primary_key = True)
-    emp_id = db.Column(db.String(100))
+    emp_id = db.Column(db.String(256))
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
     user_name = db.Column(db.String(100))
@@ -27,3 +27,43 @@ class Admin(db.Model):
         self.age = age
         self.password = password
         self.validity = validity
+
+
+class Entry(db.Model) : 
+
+    __tablename__ = "entry"
+
+    id = db.Column(db.Integer, primary_key = True)
+    user_name = db.Column(db.Integer , unique = True) 
+    date = db.Column(db.String(50))
+    entry_time_1 = db.Column(db.String(50) )
+    entry_time_2 = db.Column(db.String(50) )
+    entry_time_3 = db.Column(db.String(50) )
+    entry_time_4 = db.Column(db.String(50) )
+    entry_time_5 = db.Column(db.String(50) )
+    count = db.Column(db.Integer)
+
+
+    def __init__(self, user_name, date, entry_time_1, entry_time_2, entry_time_3, entry_time_4, entry_time_5 ,count) :
+        self.user_name = user_name
+        self.date = date
+        self.entry_time_1 = entry_time_1
+        self.entry_time_2 = entry_time_2
+        self.entry_time_3 = entry_time_3
+        self.entry_time_4 = entry_time_4
+        self.entry_time_5 = entry_time_5
+        self.count = count
+
+class Attendance(db.Model) :
+
+    __tablename__ = "attendance"
+    
+    id = db.Column(db.Integer , primary_key = True) 
+    user_name = db.Column(db.Integer ) 
+    date = db.Column(db.String(50))
+    status = db.Column(db.String(10))
+
+    def __init__(self, user_name, date ,status) :
+        self.user_name = user_name  
+        self.date = date 
+        self.status = status 

@@ -5,7 +5,7 @@ from  werkzeug.security import generate_password_hash, check_password_hash
 import json
 import jwt
 import uuid
-from models.models import db,Admin
+from models.models import db,Admin,Entry,Attendance
 from Duration import Duration
 from datetime import date,datetime, timedelta
 from functools import wraps
@@ -15,26 +15,26 @@ app = Flask(__name__)
 
 CORS(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('bala')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('1234')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'your secret key'
 
 db.init_app(app)
 
-app.config['SECRET_KEY'] = 'your secret key'
+
 jsondecoder = json.JSONDecoder()
 
 
 @app.route("/", methods=['POST', 'GET'])
 def root():
-    print("Welcome Train Booking")
-    return make_response(jsonify({'message' : "Welcome To Train Booking"}), 200)
+    return make_response(jsonify({'message' : "Success"}), 200)
 
 
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
-        
+
         if 'Authorization' in request.headers:
             token = request.headers['Authorization']
         
@@ -43,28 +43,26 @@ def token_required(f):
             jsonify({'message' : 'Token is missing !!'}),
             401) 
         
-        print(token)
         token = str.replace(str(token), "Bearer ", "")
         try:
             #token = jsondecoder.decode(token)
             
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
-            print(data)
-            
-            current_user = User.query.filter_by(public_id = data['public_id']).first()
+
+            current_user = Admin.query.filter_by(emp_id = data['emp_id']).first()
             
             if current_user.validity == 0:
                 return make_response(
                 jsonify({'message' : 'User Logged Out..Need to Login'}),
                 401)
-            print(current_user)
+            # print(current_user)
         except Exception as e:
-            print(".....!!!!!.... ", e)
+            # print(".....!!!!!.... ", e)
             return make_response(
             jsonify({'message' : 'Token is invalid !!'}),
             401)
         
-        print(token)
+        # print(token)
         return  f(current_user, *args, **kwargs)
     return decorated
 
@@ -74,20 +72,17 @@ def token_required(f):
 def user_insert():
     data = request.form
     
-    if not data or not data.get('username') or not data.get('password')or not data.get('email') :
-        return make_response(
-            jsonify({"status" : "Fields missing"}),
-            401
-            )
-    if not data.get('firstName') or not data.get('lastName') or not data.get('dob'):
+    if not data or not data.get('user_name') or not data.get('password')or not data.get('email') or not data.get('first_name') or not data.get('last_name') or not data.get('dob'):
         return make_response(
             jsonify({"status" : "Fields missing"}),
             401
             )
 
     password = data.get('password')       
-    user_name , email = data.get('username') , data.get('email')
-    first_name , last_name = data.get('firstName') , data.get('lastName')
+    user_name = data.get('user_name')
+    email = data.get('email')
+    first_name = data.get('first_name')
+    last_name = data.get('last_name')
     dob = data.get('dob')
 
     birthdate = datetime.strptime(dob , "%Y-%m-%d")
@@ -118,12 +113,12 @@ def user_insert():
 def login():
     data = request.form
     
-    if not data or not data.get('username') or not data.get('password'):
+    if not data or not data.get('user_name') or not data.get('password'):
         return make_response(
             jsonify({"status" : "Feilds missing"}),
             401
             )
-    user_name = data.get('username')
+    user_name = data.get('user_name')
     password = data.get('password')
     
     user = Admin.query.filter_by(user_name = user_name).first()
@@ -153,7 +148,7 @@ def login():
 
 #   Logout
 
-@app.route("/logout" , methods=['POST','GET'])
+@app.route("/user/logout" , methods=['POST','GET'])
 @token_required
 def logout(current_user):
     setattr(current_user, "validity", 0)
@@ -161,3 +156,44 @@ def logout(current_user):
     return make_response(
         jsonify({'message' : 'Logged Out'}),
         200)
+
+
+
+# # gathering entry 
+# @app.route("/user/entry" , methods = ["POST" , "GET"])
+# def entry():
+    
+#     data = request.form
+
+#     record = Entry(data["user_name"] , date.today() , datetime.datetime.utcnow())
+#     db.session.add(record)
+#     db.session.commit()
+#     return make_response(
+#             jsonify({"status" : "Successfully Updated"}),
+#             200
+#             )
+
+# # mark attendance 
+# @app.route("/user/attendance" , methods = ["POST" , "GET"])
+# def attendance() :
+
+#     data = request.form
+#     record = Entry.query.filter_by(emp_id = data["emp_id"]) and Entry.query.filter_by(date = date.today()).all()
+    
+#     count = 0 
+#     for x in record :
+#         count += 1 
+    
+#     if count == 3 :
+#         detail = Attendance(data["emp_id"], date.today(), "present")
+#         db.session.add(detail)
+#         db.session.commit()
+#     else:
+#         detail = Attendance(data["emp_id"], date.today(), "absent")
+#         db.session.add(detail)
+#         db.session.commit()
+#     return make_response(
+#             jsonify({"status" : "Successfully Updated"}),
+#             200
+#             )
+# */

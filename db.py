@@ -4,7 +4,10 @@ from urllib.parse import quote_plus
 from  werkzeug.security import generate_password_hash, check_password_hash
 import json
 import jwt
-from models.models import db,User
+import uuid
+from models.models import db,Admin
+from Duration import Duration
+from datetime import date,datetime, timedelta
 from functools import wraps
 from flask_cors import CORS
 
@@ -12,7 +15,7 @@ app = Flask(__name__)
 
 CORS(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/booking' % quote_plus('bala')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('bala')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -71,7 +74,7 @@ def token_required(f):
 def user_insert():
     data = request.form
     
-    if not data or not data.get('username') or not data.get('password') or not data.get('userType') or not data.get('email') :
+    if not data or not data.get('username') or not data.get('password')or not data.get('email') :
         return make_response(
             jsonify({"status" : "Fields missing"}),
             401
@@ -85,7 +88,6 @@ def user_insert():
     password = data.get('password')       
     user_name , email = data.get('username') , data.get('email')
     first_name , last_name = data.get('firstName') , data.get('lastName')
-    user_type = data.get('userType')
     dob = data.get('dob')
 
     birthdate = datetime.strptime(dob , "%Y-%m-%d")
@@ -93,7 +95,7 @@ def user_insert():
     age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
     print(age)
     
-    user = User.query.filter_by(user_name=user_name).first() or  User.query.filter_by(email=email).first()
+    user = Admin.query.filter_by(user_name=user_name).filter_by(email=email).first()
     if user:
         return make_response(
             jsonify({"status" : "User Already Exists"}),
@@ -101,8 +103,8 @@ def user_insert():
             )
     
     password= generate_password_hash(data["password"])
-
-    record = User(first_name,last_name,user_name,email,dob,age,user_type,password,0)
+    emp_id = str(uuid.uuid4())
+    record = Admin(emp_id,first_name,last_name,user_name,email,dob,age,password,0)
     db.session.add(record)
     db.session.commit()
     return make_response(
@@ -124,7 +126,7 @@ def login():
     user_name = data.get('username')
     password = data.get('password')
     
-    user = User.query.filter_by(user_name = user_name).first()
+    user = Admin.query.filter_by(user_name = user_name).first()
     print(user,type(user))
     if not user:
         return make_response(
@@ -134,7 +136,7 @@ def login():
     
     if check_password_hash(user.password, password):
         jwt_token = jwt.encode({
-            'public_id': user.public_id,
+            'emp_id': user.emp_id,
             'exp' : datetime.utcnow() + timedelta(minutes = 3000)
             }, app.config['SECRET_KEY'],"HS256")
         

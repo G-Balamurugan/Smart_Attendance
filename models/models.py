@@ -10,7 +10,6 @@ class Employee(db.Model):
     emp_id = db.Column(db.String(256))
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
-    user_name = db.Column(db.String(100))
     dob = db.Column(db.String(100))
     designation = db.Column(db.String(100))
     email = db.Column(db.String(100))

@@ -5,7 +5,7 @@ from  werkzeug.security import generate_password_hash, check_password_hash
 import json
 import jwt
 import uuid
-from models.models import db,Admin,Entry,Attendance
+from models.models import db,Employee,Login
 from Duration import Duration
 from datetime import date,datetime, timedelta
 from functools import wraps
@@ -15,7 +15,7 @@ app = Flask(__name__)
 
 CORS(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('1234')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('bala')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your secret key'
 
@@ -44,20 +44,16 @@ def token_required(f):
             401) 
         
         token = str.replace(str(token), "Bearer ", "")
-        try:
-            #token = jsondecoder.decode(token)
-            
+        try: 
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
-
-            current_user = Admin.query.filter_by(emp_id = data['emp_id']).first()
+            current_user = Login.query.filter_by(user_name = data['user_name']).first()
             
             if current_user.validity == 0:
                 return make_response(
                 jsonify({'message' : 'User Logged Out..Need to Login'}),
                 401)
-            # print(current_user)
+            
         except Exception as e:
-            # print(".....!!!!!.... ", e)
             return make_response(
             jsonify({'message' : 'Token is invalid !!'}),
             401)
@@ -66,72 +62,59 @@ def token_required(f):
         return  f(current_user, *args, **kwargs)
     return decorated
 
-#   Signup
+#   Login
 
-@app.route("/user/signup", methods = ['POST','GET'])
-def user_insert():
+@app.route("/login_insert" , methods = ['POST','GET'])
+def login_insert():
+    
     data = request.form
     
-    if not data or not data.get('user_name') or not data.get('password')or not data.get('email') or not data.get('first_name') or not data.get('last_name') or not data.get('dob'):
+    if not data or not data.get('user_name') or not data.get('password'):
         return make_response(
-            jsonify({"status" : "Fields missing"}),
-            401
-            )
-
-    password = data.get('password')       
-    user_name = data.get('user_name')
-    email = data.get('email')
-    first_name = data.get('first_name')
-    last_name = data.get('last_name')
-    dob = data.get('dob')
-
-    birthdate = datetime.strptime(dob , "%Y-%m-%d")
-    today = date.today()
-    age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
-    print(age)
+            jsonify({"status" : "Feilds missing"}),
+            401)
     
-    user = Admin.query.filter_by(user_name=user_name).filter_by(email=email).first()
+    user_name = data.get('user_name')
+    password = data.get('password')
+    user = Login.query.filter_by(user_name = user_name).first()
+    
     if user:
         return make_response(
             jsonify({"status" : "User Already Exists"}),
-            401
-            )
-    
+            401)        
+
     password= generate_password_hash(data["password"])
-    emp_id = str(uuid.uuid4())
-    record = Admin(emp_id,first_name,last_name,user_name,email,dob,age,password,0)
+
+    record = Login(user_name,password,0) 
     db.session.add(record)
     db.session.commit()
+    
     return make_response(
             jsonify({"status" : "Successfully Created"}),
-            200
-            )
+            200)    
 
-#   Login
-
-@app.route("/user/login" , methods = ['POST','GET'])
+@app.route("/login" , methods = ['POST','GET'])
 def login():
     data = request.form
     
     if not data or not data.get('user_name') or not data.get('password'):
         return make_response(
             jsonify({"status" : "Feilds missing"}),
-            401
-            )
+            401)
+        
     user_name = data.get('user_name')
     password = data.get('password')
     
-    user = Admin.query.filter_by(user_name = user_name).first()
-    print(user,type(user))
+    user = Login.query.filter_by(user_name = user_name).first()
+   
     if not user:
         return make_response(
             jsonify({"status" : "User not found"}),
-            401
-            )
+            401)
     
     if check_password_hash(user.password, password):
         jwt_token = jwt.encode({
-            'emp_id': user.emp_id,
+            'user_name': user.user_name,
             'exp' : datetime.utcnow() + timedelta(minutes = 3000)
             }, app.config['SECRET_KEY'],"HS256")
         
@@ -148,7 +131,7 @@ def login():
 
 #   Logout
 
-@app.route("/user/logout" , methods=['POST','GET'])
+@app.route("/logout" , methods=['POST','GET'])
 @token_required
 def logout(current_user):
     setattr(current_user, "validity", 0)
@@ -157,6 +140,43 @@ def logout(current_user):
         jsonify({'message' : 'Logged Out'}),
         200)
 
+#   Employee_Details
+
+@app.route("/employee_details", methods = ['POST','GET'])
+def user_insert():
+    data = request.form
+    
+    if not data or not data.get('email') or not data.get('first_name') or not data.get('last_name') or not data.get('dob') or not data.get('designation'):
+        return make_response(
+            jsonify({"status" : "Fields missing"}),
+            401
+            )
+
+    email = data.get('email')
+    first_name = data.get('first_name')
+    last_name = data.get('last_name')
+    dob = data.get('dob')
+    designation = data.get('designation')
+
+    birthdate = datetime.strptime(dob , "%Y-%m-%d")
+    today = date.today()
+    age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+    print(age)
+    
+    user = Employee.query.filter_by(first_name=first_name).filter_by(last_name=last_name).first() or Employee.query.filter_by(email=email).first()
+    if user:
+        return make_response(
+            jsonify({"status" : "Employee Already Exists"}),
+            401)
+        
+    emp_id = str(uuid.uuid4())
+    record = Employee(emp_id,first_name,last_name,email,designation,dob,age)
+    db.session.add(record)
+    db.session.commit()
+    return make_response(
+            jsonify({"status" : "Successfully Inserted..."}),
+            200
+            )
 
 
 # # gathering entry 

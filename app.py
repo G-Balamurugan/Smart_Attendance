@@ -5,7 +5,10 @@ from  werkzeug.security import generate_password_hash, check_password_hash
 import json
 import jwt
 import uuid
-from models.models import db,Employee,Login
+
+from flask_jwt_extended import JWTManager,create_access_token,create_refresh_token,jwt_required,get_jwt_identity
+
+from models.models import db,Employee,Admin
 from Duration import Duration
 from datetime import date,datetime, timedelta
 from functools import wraps
@@ -14,13 +17,13 @@ from flask_cors import CORS
 app = Flask(__name__)
 
 CORS(app)
+JWTManager(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('bala')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your secret key'
 
 db.init_app(app)
-
 
 jsondecoder = json.JSONDecoder()
 
@@ -30,68 +33,76 @@ def root():
     return make_response(jsonify({'message' : "Success"}), 200)
 
 
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
 
-        if 'Authorization' in request.headers:
-            token = request.headers['Authorization']
-        
-        if not token:
-            return make_response(
-            jsonify({'message' : 'Token is missing !!'}),
-            401) 
-        
-        token = str.replace(str(token), "Bearer ", "")
-        try: 
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
-            current_user = Login.query.filter_by(user_name = data['user_name']).first()
-            
-            if current_user.validity == 0:
-                return make_response(
-                jsonify({'message' : 'User Logged Out..Need to Login'}),
-                401)
-            
-        except Exception as e:
-            return make_response(
-            jsonify({'message' : 'Token is invalid !!'}),
-            401)
-        
-        # print(token)
-        return  f(current_user, *args, **kwargs)
-    return decorated
+def user_details(f):
+    current_user = Admin.query.filter_by(user_name=f).first()
+    return current_user
 
-#   Login
-
-@app.route("/login_insert" , methods = ['POST','GET'])
-def login_insert():
+#   Refresh
+ 
+@app.route("/token/refresh" , methods = ['POST','GET'])
+@jwt_required(refresh=True)
+def token_refresh():
+    current_user = user_details(get_jwt_identity())
+    if current_user.validity == 0:
+        return make_response(
+        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        401)
     
+    access_token = create_access_token(identity=current_user.user_name)
+
+    return make_response(
+            jsonify({"status" : "Success", "access_token" : access_token }),
+            200)
+
+#   Admin
+
+@app.route("/admin/insert" , methods = ['POST','GET'])
+@jwt_required()
+def login_insert():
+    current_user = user_details(get_jwt_identity())
+    if current_user.validity == 0:
+        return make_response(
+        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        401)
     data = request.form
     
-    if not data or not data.get('user_name') or not data.get('password'):
+    if not data or not data.get('user_name') or not data.get('password') or not data.get('email') :
         return make_response(
-            jsonify({"status" : "Feilds missing"}),
+            jsonify({"status" : "Fields missing"}),
+            401)
+    if not data.get('first_name') or not data.get('last_name') or not data.get('dob') or not data.get('designation'):
+        return make_response(
+            jsonify({"status" : "Fields missing"}),
             401)
     
-    user_name = data.get('user_name')
-    password = data.get('password')
-    user = Login.query.filter_by(user_name = user_name).first()
+    password = data.get('password')       
+    user_name , email = data.get('user_name') , data.get('email')
+    first_name , last_name = data.get('first_name') , data.get('last_name')
+    designation = data.get('designation')
+    dob = data.get('dob')
+
+    birthdate = datetime.strptime(dob , "%Y-%m-%d")
+    today = date.today()
+    age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
     
+    user = Admin.query.filter_by(user_name=user_name).first() or  Admin.query.filter_by(email=email).first()
     if user:
         return make_response(
             jsonify({"status" : "User Already Exists"}),
-            401)        
-
+            401)
+    
     password= generate_password_hash(data["password"])
-
-    record = Login(user_name,password,0) 
+    admin_id = str(uuid.uuid4())
+    record = Admin(admin_id,first_name,last_name,dob,age,designation,email,user_name,password,0)
     db.session.add(record)
     db.session.commit()
-    
     return make_response(
-            jsonify({"status" : "Successfully Created"}),
-            200)    
+            jsonify({"status" : "Successfully Inserted.." ,"user_name" : current_user.user_name}),
+            200)
+    
+   
+#   Login
 
 @app.route("/login" , methods = ['POST','GET'])
 def login():
@@ -105,7 +116,7 @@ def login():
     user_name = data.get('user_name')
     password = data.get('password')
     
-    user = Login.query.filter_by(user_name = user_name).first()
+    user = Admin.query.filter_by(user_name = user_name).first()
    
     if not user:
         return make_response(
@@ -113,16 +124,15 @@ def login():
             401)
     
     if check_password_hash(user.password, password):
-        jwt_token = jwt.encode({
-            'user_name': user.user_name,
-            'exp' : datetime.utcnow() + timedelta(minutes = 3000)
-            }, app.config['SECRET_KEY'],"HS256")
+
+        jwt_access_token = create_access_token(identity=user_name)
+        jwt_refresh_token = create_refresh_token(identity=user_name)
         
         setattr(user, "validity", 1)
         db.session.commit()
         
         return make_response(
-            jsonify({"status" : "Success", "token" : jwt_token}),
+            jsonify({"status" : "Success", "access_token" : jwt_access_token , "refresh_token" : jwt_refresh_token , "token_expire_time" : 15}),
             200)
     else:
         return make_response(
@@ -132,18 +142,31 @@ def login():
 #   Logout
 
 @app.route("/logout" , methods=['POST','GET'])
-@token_required
-def logout(current_user):
+@jwt_required()
+def logout():
+    current_user = user_details(get_jwt_identity())
+    if current_user.validity == 0:
+        return make_response(
+        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        401)
+    
     setattr(current_user, "validity", 0)
     db.session.commit()
     return make_response(
-        jsonify({'message' : 'Logged Out'}),
+        jsonify({'message' : 'Logged Out',"user_name" : current_user.user_name}),
         200)
 
 #   Employee_Details
 
 @app.route("/employee_details", methods = ['POST','GET'])
+@jwt_required()
 def user_insert():
+    current_user = user_details(get_jwt_identity())
+    if current_user.validity == 0:
+        return make_response(
+        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        401)
+        
     data = request.form
     
     if not data or not data.get('email') or not data.get('first_name') or not data.get('last_name') or not data.get('dob') or not data.get('designation'):
@@ -161,7 +184,6 @@ def user_insert():
     birthdate = datetime.strptime(dob , "%Y-%m-%d")
     today = date.today()
     age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
-    print(age)
     
     user = Employee.query.filter_by(first_name=first_name).filter_by(last_name=last_name).first() or Employee.query.filter_by(email=email).first()
     if user:
@@ -217,3 +239,4 @@ def user_insert():
 #             200
 #             )
 # */
+

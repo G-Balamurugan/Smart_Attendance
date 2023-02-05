@@ -10,7 +10,6 @@ class Employee(db.Model):
     emp_id = db.Column(db.String(256))
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
-    user_name = db.Column(db.String(100))
     dob = db.Column(db.String(100))
     designation = db.Column(db.String(100))
     email = db.Column(db.String(100))
@@ -26,16 +25,30 @@ class Employee(db.Model):
         self.age = age
 
 
-class Login(db.Model):
+class Admin(db.Model):
     
-    __tablename__ = "login"
+    __tablename__ = "admin"
     
     id = db.Column(db.Integer, primary_key = True) 
+    admin_id = db.Column(db.String(256))
+    first_name = db.Column(db.String(100))
+    last_name = db.Column(db.String(100))
     user_name = db.Column(db.String(100))
     password = db.Column(db.String(256))
     validity = db.Column(db.Integer)
+    dob = db.Column(db.String(100))
+    designation = db.Column(db.String(100))
+    email = db.Column(db.String(100))
+    age = db.Column(db.Integer)
     
-    def __init__(self,user_name,password,validity):
+    def __init__(self,admin_id, first_name, last_name, dob, age, designation, email, user_name,password,validity):
+        self.admin_id = admin_id
+        self.first_name = first_name
+        self.last_name = last_name
+        self.dob = dob
+        self.age = age
+        self.designation = designation
+        self.email = email
         self.user_name = user_name
         self.password = password
         self.validity = validity

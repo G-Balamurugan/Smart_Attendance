@@ -9,6 +9,7 @@ flask-sqlalchemy = "*"
 mysqlclient = "*"
 pyjwt = "*"
 flask-cors = "*"
+flask-jwt-extended = "*"
 
 [dev-packages]
 

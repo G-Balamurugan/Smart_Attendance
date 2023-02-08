@@ -19,7 +19,7 @@ app = Flask(__name__)
 CORS(app)
 JWTManager(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('bala')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('password')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your secret key'
 
@@ -30,7 +30,7 @@ jsondecoder = json.JSONDecoder()
 
 @app.route("/", methods=['POST', 'GET'])
 def root():
-    return make_response(jsonify({'message' : "Success"}), 200)
+    return make_response(jsonify({'status' : "Success"}), 200)
 
 
 
@@ -46,7 +46,7 @@ def token_refresh():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
     
     access_token = create_access_token(identity=current_user.user_name)
@@ -117,7 +117,7 @@ def login():
             jsonify({"status" : "User not found"}),
             401)
     
-    if check_password_hash(user.password, password):
+    if (user.password == password):
 
         jwt_access_token = create_access_token(identity=user_name)
         jwt_refresh_token = create_refresh_token(identity=user_name)
@@ -141,13 +141,13 @@ def logout():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
     
     setattr(current_user, "validity", 0)
     db.session.commit()
     return make_response(
-        jsonify({'message' : 'Logged Out',"user_name" : current_user.user_name}),
+        jsonify({'status' : 'Logged Out',"user_name" : current_user.user_name}),
         200)
 
 #   Employee_Details
@@ -158,20 +158,22 @@ def employee_details():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
-        
-    data = request.form
     
-    if not data or not data.get('email') or not data.get('first_name') or not data.get('last_name') or not data.get('dob') or not data.get('designation'):
+    if request.method == "POST":
+        data = request.form
+        print(data)
+    
+    if not data or not data.get('email') or not data.get('firstName') or not data.get('lastName') or not data.get('dob') or not data.get('designation'):
         return make_response(
             jsonify({"status" : "Fields missing"}),
             401
             )
 
     email = data.get('email')
-    first_name = data.get('first_name')
-    last_name = data.get('last_name')
+    first_name = data.get('firstName')
+    last_name = data.get('lastName')
     dob = data.get('dob')
     designation = data.get('designation')
 
@@ -202,14 +204,14 @@ def employee_list():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
     print(request.get_data())
     data = request.get_json()
     print(data)
-    if not data or not data['page_number']:
+    if not data or 'page_number' not in data.keys():
         return make_response(
-        jsonify({'message' : 'Feilds Missing..!'}),
+        jsonify({'status' : 'Feilds Missing..!'}),
         401) 
     
     page_number = int(data['page_number'])
@@ -261,7 +263,7 @@ def employee_search():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
         
         
@@ -294,7 +296,7 @@ def employee_select():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
     
     #print(request.get_data())
@@ -314,17 +316,17 @@ def employee_select():
         
     today = date.today()
     
-    attendance_perc_chk = Attendance.query.filter_by(id=employee_details_search.id).filter_by(employee_name=employee_details_search.first_name).all()
+    # attendance_perc_chk = Attendance.query.filter_by(id=employee_details_search.id).filter_by(employee_name=employee_details_search.first_name).all()
 
     attendance_perc = 0
-    for i in attendance_perc_chk:
-        if i.day_attendance=="present":
-            attendance_perc+=1
+    # for i in attendance_perc_chk:
+    #     if i.day_attendance=="present":
+    #         attendance_perc+=1
         
-    month_chk = Working_days.query.filter_by(month_number=today.month).first()
-    print(attendance_perc)
-    attendance_perc=(attendance_perc/(month_chk.working_days_count))
-    print(attendance_perc)
+    # month_chk = Working_days.query.filter_by(month_number=today.month).first()
+    # print(attendance_perc)
+    # attendance_perc=(attendance_perc/(month_chk.working_days_count))
+    # print(attendance_perc)
     
     output={}
     output['emp_id']=employee_details_search.emp_id
@@ -348,7 +350,7 @@ def working_days():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
         
     data = request.form
@@ -401,7 +403,7 @@ def attendance_entry():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
         
     data = request.form

@@ -57,6 +57,10 @@ const addSearchButtonListener = () => {
                 console.log(status)
             } catch (error) {
                 alert(error)
+                if (error.slice(-7,) == "expired") {
+                    localStorage.clear()
+                    window.location.href = './login.html'
+                } 
             } finally {
                 if (status == 200) {
                     window.location.href = './employee.html'

@@ -148,15 +148,23 @@ const changePage = (to) => {
 }
 
 const renderPages = async () => {
-    var status = await fetchEmployees(currentPage, 'all')
-    console.log(status)
+    try {
+        var status = await fetchEmployees(currentPage, 'all')
+        console.log(status)
+        
+        removeCardContainer()
+        initializeCards('records')
+        updatePageNumber('records')
     
-    removeCardContainer()
-    initializeCards('records')
-    updatePageNumber('records')
-
-    greyLeftChevron()
-    greyRightChevron()
+        greyLeftChevron()
+        greyRightChevron()
+    } catch (error) {
+        alert(error)
+        if (error.slice(-7,) == "expired") {
+            localStorage.clear()
+            window.location.href = './login.html'
+        }
+    }
 }
 
 const updatePageNumber = (type) => {

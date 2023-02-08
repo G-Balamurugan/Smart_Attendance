@@ -17,25 +17,42 @@ const initializeProfile = () => {
     const details = document.createElement('div')
     details.classList.add('details')
 
+
+    var centerDiv = document.createElement('div')
+    centerDiv.classList.add('center')
+    centerDiv.classList.add('mb-20')
+
+    var container = document.createElement('div')
+    container.classList.add('flex-row')
+    container.classList.add('font-large')
+
+    var field = document.createElement('p')
+    field.classList.add('field')
+    field.textContent = "EID : "
+    var value = document.createElement('p')
+    value.textContent = info.emp_id
+    container.appendChild(field)
+    container.appendChild(value)
+
+    centerDiv.appendChild(container)
+    details.append(centerDiv)
+
     const row = document.createElement('div')
     row.classList.add('flex-row')
+    row.classList.add('center')
+    row.classList.add('gap-20')
 
-    const end = document.createElement('div')
-    end.classList.add('flex-column')
-    end.classList.add('end')
-    
-    const column = document.createElement('div')
+    var column = document.createElement('div')
     column.classList.add('flex-column')
-    column.classList.add('right')
 
     // Div
-    var container = document.createElement('div')
+    container = document.createElement('div')
     // Field
-    var field = document.createElement('p')
+    field = document.createElement('p')
     field.classList.add('field')
     field.textContent = "First Name"
     // Value
-    var value = document.createElement('p')
+    value = document.createElement('p')
     value.classList.add('value')
     value.textContent = info.first_name
     container.appendChild(field)
@@ -64,19 +81,6 @@ const initializeProfile = () => {
     container.appendChild(field)
     container.appendChild(value)
     column.appendChild(container)
-
-    container = document.createElement('div')
-    field = document.createElement('p')
-    field.classList.add('field')
-    field.textContent = "EID"
-    value = document.createElement('p')
-    value.classList.add('value')
-    value.textContent = info.emp_id
-    container.appendChild(field)
-    container.appendChild(value)
-    column.appendChild(container)
-
-    end.appendChild(column)
     
     // Next Column
     const anotherColumn = document.createElement('div')
@@ -110,25 +114,28 @@ const initializeProfile = () => {
     field.textContent = "Email"
     value = document.createElement('p')
     value.classList.add('value')
+    value.classList.add('w-270')
+    value.classList.add('mb-5')
     value.textContent = info.email
     container.appendChild(field)
     container.appendChild(value)
     anotherColumn.appendChild(container)
 
-    row.appendChild(end)
+    row.appendChild(column)
     row.appendChild(anotherColumn)
     details.appendChild(row)
 
     // Attendance Percentage
-    const centerDiv = document.createElement('div')
+    centerDiv = document.createElement('div')
     centerDiv.classList.add('center')
 
     const attendanceDiv = document.createElement('div')
-    attendanceDiv.classList.add('attendance')
+    attendanceDiv.classList.add('flex-row')
+    attendanceDiv.classList.add('font-xxl')
+    attendanceDiv.classList.add('mt-40')
 
     field = document.createElement('p')
     field.classList.add('field')
-    field.classList.add('large')
     field.textContent = "Attendance : "
     value = document.createElement('p')
     value.classList.add('value')

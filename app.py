@@ -102,12 +102,12 @@ def login_insert():
 def login():
     data = request.form
     
-    if not data or not data.get('user_name') or not data.get('password'):
+    if not data or not data.get('username') or not data.get('password'):
         return make_response(
             jsonify({"status" : "Feilds missing"}),
             401)
         
-    user_name = data.get('user_name')
+    user_name = data.get('username')
     password = data.get('password')
     
     user = Admin.query.filter_by(user_name = user_name).first()
@@ -204,30 +204,53 @@ def employee_list():
         return make_response(
         jsonify({'message' : 'User Logged Out..Need to Login'}),
         401)
+    print(request.get_data())
+    data = request.get_json()
+    print(data)
+    if not data or not data['page_number']:
+        return make_response(
+        jsonify({'message' : 'Feilds Missing..!'}),
+        401) 
     
+    page_number = int(data['page_number'])
+    print("1....................",page_number)
     emp_list = Employee.query.all()
+
     if not emp_list:
         return make_response(
             jsonify({"status" : "No Employee Found"}),
             401)
     
-    output_range=len(emp_list)
+    emp_list_size = len(emp_list)
+
+    total_pages = int(emp_list_size/10)
+    if total_pages%10!=0:
+        total_pages+=1
+
+    if total_pages<(page_number-1):
+        return make_response(
+            jsonify({"status" : "Page Limit Exceeded..!"}),
+            401)
     
-    if output_range>10:
-        output_range=10
+    output_range_start = (page_number*10) - 10
+    output_range_end = page_number*10
+    
+    if output_range_end>emp_list_size:
+        output_range_end = output_range_start + (emp_list_size%10) 
+    
+    final_result = {}
+    final_result['total_pages'] = total_pages
     
     result=[]
-    for i in emp_list:
+    for i in range(output_range_start,output_range_end):
         temp={}
-        if(output_range):
-            temp['employee_name']=i.first_name
-            temp['designation']=i.designation
-            result.append(temp)
-        else:
-            break
-        output_range-=1
+        temp['employee_name']=emp_list[i].first_name
+        temp['designation']=emp_list[i].designation
+        result.append(temp)
+    
+    final_result['employee_list'] = result
 
-    return result
+    return final_result
 
 
 #   Employee Search
@@ -241,14 +264,48 @@ def employee_search():
         jsonify({'message' : 'User Logged Out..Need to Login'}),
         401)
         
-    data = request.form
+        
+    data = request.get_json()
     
-    if not data or not data.get('employee_name'):
+    if not data or not data['employee_name']:
         return make_response(
             jsonify({"status" : "Fields missing"}),
             401)
         
-    employee_details_search = Employee.query.filter_by(first_name=data.get('employee_name')).first()
+    employee_details_search = Employee.query.filter_by(first_name=data['employee_name']).first()
+    
+    if not employee_details_search:
+        return make_response(
+            jsonify({"status" : "No Match Found..!"}),
+            401)
+        
+    output={}
+    output['employee_name'] = employee_details_search.first_name
+    output['designation'] = employee_details_search.designation
+    
+    return output
+    
+    
+#   Employee Select
+
+@app.route("/employee_select", methods = ['POST','GET'])
+@jwt_required()
+def employee_select():
+    current_user = user_details(get_jwt_identity())
+    if current_user.validity == 0:
+        return make_response(
+        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        401)
+    
+    #print(request.get_data())
+    data = request.get_json()
+    #print(data)
+    if not data or not data['employee_name'] or not data['designation']:
+        return make_response(
+            jsonify({"status" : "Fields missing"}),
+            401)
+        
+    employee_details_search = Employee.query.filter_by(first_name=data['employee_name']).filter_by(designation=data['designation']).first()
     
     if not employee_details_search:
         return make_response(
@@ -265,8 +322,10 @@ def employee_search():
             attendance_perc+=1
         
     month_chk = Working_days.query.filter_by(month_number=today.month).first()
+    print(attendance_perc)
     attendance_perc=(attendance_perc/(month_chk.working_days_count))
-
+    print(attendance_perc)
+    
     output={}
     output['emp_id']=employee_details_search.emp_id
     output['first_name']=employee_details_search.first_name
@@ -275,8 +334,9 @@ def employee_search():
     output['age']=employee_details_search.age
     output['email']=employee_details_search.email
     output['designation']=employee_details_search.designation
-    output['attendance_percent']=attendance_perc
+    output['attendance_percent']=str(attendance_perc)+"%"
     
+    print(output)
     return output
 
 
@@ -380,11 +440,22 @@ def attendance_entry():
         return make_response(
             jsonify({"status" : "Entry Missing in Working Days Table..!"}),
             401)
-        
-    record = Attendance(emp_id, employee_name, attendance_date.day, attendance_date.month, attendance_date.year, attendance)
-    db.session.add(record)
-    db.session.commit()
+
+    attendance_chk = Attendance.query.filter_by(employee_name=employee_name).filter_by(emp_id=emp_id).filter_by(day=attendance_date.day).filter_by(month=attendance_date.month).filter_by(year=attendance_date.year).first()
+    print(attendance_chk)    
+    if attendance_chk:
+        setattr(attendance_chk,"day_attendance",attendance)
+        db.session.commit()
     
-    return make_response(
+        return make_response(
+            jsonify({"status" : "Successfully Updated.."}),
+            200)
+
+    else:
+        record = Attendance(emp_id, employee_name, attendance_date.day, attendance_date.month, attendance_date.year, attendance)
+        db.session.add(record)
+        db.session.commit()
+    
+        return make_response(
             jsonify({"status" : "Successfully Inserted.."}),
             200)

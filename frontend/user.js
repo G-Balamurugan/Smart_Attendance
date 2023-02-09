@@ -19,7 +19,7 @@ const displayErrorMessage = (message) => {
 const sendFormData = () => {
     return new Promise( function (resolve, reject) {
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', 'http://127.0.0.1:5000/employee_details'); 
+        xhr.open('POST', 'http://192.168.71.203:5000/employee_details'); 
     
         // This fires up when the connection is successful
         xhr.onload = function(event){ 

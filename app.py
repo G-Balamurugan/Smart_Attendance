@@ -6,22 +6,27 @@ import json
 import jwt
 import uuid
 
-from flask_jwt_extended import JWTManager,create_access_token,create_refresh_token,jwt_required,get_jwt_identity
+from flask_jwt_extended import JWTManager,create_access_token,create_refresh_token,jwt_required,get_jwt_identity,get_jwt
 
-from models.models import db,Employee,Admin,Attendance,Working_days
+from models.models import db,Employee,Admin,Attendance,Working_days,Month_attendance
 from Duration import Duration
-from datetime import date,datetime, timedelta
+from datetime import date,datetime,timedelta
 from functools import wraps
 from flask_cors import CORS
 
-app = Flask(__name__)
+from apscheduler.schedulers.background import BackgroundScheduler
 
-CORS(app)
-JWTManager(app)
+app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('bala')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'your secret key'
+
+app.config['JWT_SECRET_KEY'] = 'your secret key'
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=2)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=3)
+
+CORS(app)
+JWTManager(app)
 
 db.init_app(app)
 
@@ -30,13 +35,66 @@ jsondecoder = json.JSONDecoder()
 
 @app.route("/", methods=['POST', 'GET'])
 def root():
-    return make_response(jsonify({'message' : "Success"}), 200)
+    return make_response(jsonify({'status' : "Success"}), 200)
 
 
 
 def user_details(f):
     current_user = Admin.query.filter_by(user_name=f).first()
     return current_user
+
+def employee_details(f):
+    current_employee = Employee.query.filter_by(user_name=f).first()
+    return current_employee
+
+
+#   Employee Atendance Entry By APSCHEDULER
+
+scheduler = BackgroundScheduler(daemon = True)
+
+def employee_attendance():
+    with app.app_context():
+        employee_list_attendance = Attendance.query.all()
+        
+        for attendance_chk in employee_list_attendance:
+        
+            today = date.today()
+                
+            attendance_per_chk = attendance_chk.day_attendance_present / (attendance_chk.day_attendance_present + attendance_chk.day_attendance_absent)
+        
+            if attendance_per_chk*100<75:    
+                return  make_response(
+                jsonify({'status' : 'Absent..Because Below 75%'}),
+                200)
+            
+            if attendance_chk.out_duration>7200:
+                return  make_response(
+                jsonify({'status' : 'Absent..Out time more than 2hour'}),
+                200)
+            
+            employee_chk = Employee.query.filter_by(emp_id=attendance_chk.emp_id).first()
+            month_attendance_update = Month_attendance.query.filter_by(emp_id=attendance_chk.emp_id).filter_by(month_number=attendance_chk.month).first()
+            month_chk = Working_days.query.filter_by(month_number=today.month).first()
+            if not month_chk:
+                return  make_response(
+                jsonify({'status' : 'No entry for workingday..!'}),
+                401)
+                
+            attendance_perc=((month_attendance_update.days_present+1)/(month_chk.working_days_count))    
+
+            setattr(employee_chk,"current_attendance_percentage",attendance_perc)
+            setattr(month_attendance_update,"days_present",month_attendance_update.days_present+1)
+            db.session.commit()    
+            
+            db.session.delete(attendance_chk)
+            db.session.commit()
+        
+        print("Attendance..Updated..!")
+
+job = scheduler.add_job(employee_attendance, 'cron', hour='15', minute='10',second='00')
+
+scheduler.start()
+
 
 #   Refresh
  
@@ -46,7 +104,7 @@ def token_refresh():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
     
     access_token = create_access_token(identity=current_user.user_name)
@@ -111,7 +169,6 @@ def login():
     password = data.get('password')
     
     user = Admin.query.filter_by(user_name = user_name).first()
-   
     if not user:
         return make_response(
             jsonify({"status" : "User not found"}),
@@ -119,14 +176,14 @@ def login():
     
     if check_password_hash(user.password, password):
 
-        jwt_access_token = create_access_token(identity=user_name)
-        jwt_refresh_token = create_refresh_token(identity=user_name)
-        
+        jwt_access_token = create_access_token(identity=user_name,expires_delta=timedelta(hours=2))
+        jwt_refresh_token = create_refresh_token(identity=user_name,expires_delta=timedelta(hours=3))
+    
         setattr(user, "validity", 1)
         db.session.commit()
         
         return make_response(
-            jsonify({"status" : "Success", "access_token" : jwt_access_token , "refresh_token" : jwt_refresh_token , "token_expire_time" : 15}),
+            jsonify({"status" : "Success", "access_token" : jwt_access_token , "refresh_token" : jwt_refresh_token , "token_expire_time" : 7200}),
             200)
     else:
         return make_response(
@@ -141,40 +198,41 @@ def logout():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
     
     setattr(current_user, "validity", 0)
     db.session.commit()
     return make_response(
-        jsonify({'message' : 'Logged Out',"user_name" : current_user.user_name}),
+        jsonify({'status' : 'Logged Out',"user_name" : current_user.user_name}),
         200)
 
-#   Employee_Details
+#   Employee_Details_Insert
 
 @app.route("/employee_details", methods = ['POST','GET'])
 @jwt_required()
-def employee_details():
+def employee_details_insert():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
         
     data = request.form
     
-    if not data or not data.get('email') or not data.get('first_name') or not data.get('last_name') or not data.get('dob') or not data.get('designation'):
+    if not data or not data.get('email') or not data.get('firstName') or not data.get('lastName') or not data.get('dob') or not data.get('designation') or not data.get('userName') or not data.get('password'):
         return make_response(
             jsonify({"status" : "Fields missing"}),
-            401
-            )
+            401)
 
     email = data.get('email')
-    first_name = data.get('first_name')
-    last_name = data.get('last_name')
+    first_name = data.get('firstName')
+    last_name = data.get('lastName')
     dob = data.get('dob')
     designation = data.get('designation')
-
+    user_name = data.get('userName')
+    password= generate_password_hash(data.get("password"))
+        
     birthdate = datetime.strptime(dob , "%Y-%m-%d")
     today = date.today()
     age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
@@ -184,15 +242,95 @@ def employee_details():
         return make_response(
             jsonify({"status" : "Employee Already Exists"}),
             401)
+    
+    user_name_chk = Employee.query.filter_by(user_name=user_name).first()
+    if user_name_chk:
+        return make_response(
+            jsonify({"status" : "User Name Already Exists"}),
+            401)
         
     emp_id = str(uuid.uuid4())
-    record = Employee(emp_id,first_name,last_name,email,designation,dob,age)
+    record = Employee(emp_id,first_name,last_name,email,designation,dob,age,user_name,password,0)
     db.session.add(record)
     db.session.commit()
+    
+    employee_details_chk = Employee.query.filter_by(emp_id=emp_id).first()
+    setattr(employee_details_chk,"current_attendance_percentage",0)
+    db.session.commit()
+    
     return make_response(
             jsonify({"status" : "Successfully Inserted..."}),
             200)
 
+
+#   Employee Login App
+
+@app.route("/employee/login" , methods = ['POST','GET'])
+def employee_login():
+    data = request.form
+    
+    if not data or not data.get('userName') or not data.get('password'):
+        return make_response(
+            jsonify({"status" : "Feilds missing"}),
+            401)
+        
+    user_name = data.get('userName')
+    password = data.get('password')
+    
+    user = Employee.query.filter_by(user_name=user_name).first()
+   
+    if not user:
+        return make_response(
+            jsonify({"status" : "Employee not found"}),
+            401)
+    
+    if check_password_hash(user.password, password):
+
+        jwt_access_token_employee = create_access_token(identity=user_name,expires_delta=timedelta(hours=2))
+        jwt_refresh_token_employee = create_refresh_token(identity=user_name,expires_delta=timedelta(hours=3))
+        
+        employee_chk_attendance = Attendance.query.filter_by(emp_id=user.emp_id).first()
+        if not employee_chk_attendance:
+            today = datetime.today()
+            record = Attendance(user.emp_id,user.first_name,today.day,today.month,today.year,0,0,"","",0) 
+            db.session.add(record)
+        
+        today = date.today()
+        
+        employee_month_chk = Month_attendance.query.filter_by(emp_id=user.emp_id).filter_by(month_number=today.month).first()
+        if not employee_month_chk:
+            record_ = Month_attendance(user.emp_id,today.month,0) 
+            db.session.add(record_)
+        db.session.commit()
+        
+        setattr(user, "validity", 1)
+        db.session.commit()
+        
+        return make_response(
+            jsonify({"status" : "Success", "access_token" : jwt_access_token_employee , "refresh_token" : jwt_refresh_token_employee , "token_expire_time" : 7200}),
+            200)
+    else:
+        return make_response(
+            jsonify({"status" : "Wrong password"}),
+            401)
+
+
+#   Employee Logout App
+
+@app.route("/employee/logout" , methods=['POST','GET'])
+@jwt_required()
+def employee_logout():
+    current_user = employee_details(get_jwt_identity())
+    if current_user.validity == 0:
+        return make_response(
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
+        401)
+    
+    setattr(current_user, "validity", 0)
+    db.session.commit()
+    return make_response(
+        jsonify({'status' : 'Logged Out',"user_name" : current_user.user_name}),
+        200)
 
 #   Employee List
 
@@ -202,18 +340,18 @@ def employee_list():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
-    print(request.get_data())
+    
     data = request.get_json()
-    print(data)
+    
     if not data or not data['page_number']:
         return make_response(
-        jsonify({'message' : 'Feilds Missing..!'}),
+        jsonify({'status' : 'Feilds Missing..!'}),
         401) 
     
     page_number = int(data['page_number'])
-    print("1....................",page_number)
+    
     emp_list = Employee.query.all()
 
     if not emp_list:
@@ -224,9 +362,10 @@ def employee_list():
     emp_list_size = len(emp_list)
 
     total_pages = int(emp_list_size/10)
-    if total_pages%10!=0:
+    #print("11...............",total_pages)
+    if total_pages%10!=0 or total_pages==0:
         total_pages+=1
-
+    #print("22..................",total_pages)
     if total_pages<(page_number-1):
         return make_response(
             jsonify({"status" : "Page Limit Exceeded..!"}),
@@ -261,7 +400,7 @@ def employee_search():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
         
         
@@ -294,7 +433,7 @@ def employee_select():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
     
     #print(request.get_data())
@@ -348,7 +487,7 @@ def working_days():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
         
     data = request.form
@@ -393,6 +532,151 @@ def working_days():
             200)
 
 
+#   Employee Details Display
+
+@app.route("/employee/details_select", methods = ['POST','GET'])
+@jwt_required()
+def employee_details_select():
+
+    current_user = employee_details(get_jwt_identity())
+    if current_user.validity == 0:
+        return make_response(
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
+        401)
+    
+    output = {}
+    
+    output['emp_id']=current_user.emp_id
+    output['first_name']=current_user.first_name
+    output['last_name']=current_user.last_name
+    output['dob']=current_user.dob
+    output['age']=current_user.age
+    output['email']=current_user.email
+    output['designation']=current_user.designation
+    
+    return output
+
+
+#   Present
+ 
+@app.route("/present", methods = ['POST','GET'])
+@jwt_required()
+def employee_present():
+    current_user = employee_details(get_jwt_identity())
+    #print("11...................",current_user)
+    if current_user.validity == 0:
+        return make_response(
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
+        401)
+    
+    employee_chk = Employee.query.filter_by(emp_id=current_user.emp_id).first()
+    
+    if not employee_chk:
+        return make_response(
+            jsonify({"status" : "Invalid Employee Details"}),
+            401)
+
+    employee_chk_attendance = Attendance.query.filter_by(emp_id=current_user.emp_id).first()
+    
+    setattr(employee_chk_attendance,"day_attendance_present",employee_chk_attendance.day_attendance_present +1)
+    db.session.commit()
+    
+    return make_response(
+        jsonify({"status" : "Successfully Updated.."}),
+        200)
+
+
+#   Absent
+ 
+@app.route("/absent", methods = ['POST','GET'])
+@jwt_required()
+def employee_absent():
+    current_user = employee_details(get_jwt_identity())
+    if current_user.validity == 0:
+        return make_response(
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
+        401)
+
+    employee_chk = Employee.query.filter_by(emp_id=current_user.emp_id).first()
+    
+    if not employee_chk:
+        return make_response(
+            jsonify({"status" : "Invalid Employee Details"}),
+            401)
+
+    employee_chk_attendance = Attendance.query.filter_by(emp_id=current_user.emp_id).first()
+    
+    setattr(employee_chk_attendance,"day_attendance_absent",employee_chk_attendance.day_attendance_absent +1)
+    db.session.commit()
+    
+    return make_response(
+        jsonify({"status" : "Successfully Updated.."}),
+        200)
+
+
+#   In Time
+
+@app.route("/in_time", methods = ['POST','GET'])
+@jwt_required()
+def employee_in():
+    current_user = employee_details(get_jwt_identity())
+    if current_user.validity == 0:
+        return make_response(
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
+        401)
+    
+    employee_chk = Employee.query.filter_by(emp_id=current_user.emp_id).first()
+    
+    if not employee_chk:
+        return make_response(
+            jsonify({"status" : "Invalid Employee Details"}),
+            401)
+
+    employee_chk_attendance = Attendance.query.filter_by(emp_id=current_user.emp_id).first()
+    
+    setattr(employee_chk_attendance,"in_time",str(datetime.now()))
+    db.session.commit()
+    print(str(datetime.now()))
+    if employee_chk_attendance.out_time != "":
+        duration_left = Duration.duration_left(employee_chk_attendance.out_time,str(datetime.now()))
+        setattr(employee_chk_attendance,"out_duration",employee_chk_attendance.out_duration + duration_left)
+        setattr(employee_chk_attendance,"in_time","")
+        setattr(employee_chk_attendance,"out_time","")
+        db.session.commit()
+        
+    return make_response(
+        jsonify({"status" : "Successfully Updated.."}),
+        200)
+
+
+#   Out Time
+
+@app.route("/out_time", methods = ['POST','GET'])
+@jwt_required()
+def employee_out():
+    current_user = employee_details(get_jwt_identity())
+    if current_user.validity == 0:
+        return make_response(
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
+        401)
+    
+    employee_chk = Employee.query.filter_by(emp_id=current_user.emp_id).first()
+    
+    if not employee_chk:
+        return make_response(
+            jsonify({"status" : "Invalid Employee Details"}),
+            401)
+
+    employee_chk_attendance = Attendance.query.filter_by(emp_id=current_user.emp_id).first()
+    
+    setattr(employee_chk_attendance,"out_time",str(datetime.now()))
+    db.session.commit()
+    
+    return make_response(
+        jsonify({"status" : "Successfully Updated.."}),
+        200)
+
+
 #   Attendance
 
 @app.route("/attendance_entry", methods = ['POST','GET'])
@@ -401,7 +685,7 @@ def attendance_entry():
     current_user = user_details(get_jwt_identity())
     if current_user.validity == 0:
         return make_response(
-        jsonify({'message' : 'User Logged Out..Need to Login'}),
+        jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
         
     data = request.form

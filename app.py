@@ -18,7 +18,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('bala')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('1234')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 app.config['JWT_SECRET_KEY'] = 'your secret key'
@@ -267,12 +267,10 @@ def employee_details_insert():
 
 @app.route("/employee/login" , methods = ['POST','GET'])
 def employee_login():
-    data = request.form
+    data = request.get_json()
     
-    if not data or not data.get('userName') or not data.get('password'):
-        return make_response(
-            jsonify({"status" : "Feilds missing"}),
-            401)
+    if not data or not data['userName'] or not data['password']:
+        return jsonify({"status" : "Feilds missing"})
         
     user_name = data.get('userName')
     password = data.get('password')
@@ -280,14 +278,12 @@ def employee_login():
     user = Employee.query.filter_by(user_name=user_name).first()
    
     if not user:
-        return make_response(
-            jsonify({"status" : "Employee not found"}),
-            401)
+        return jsonify({"status":"Employee not found"})
     
     if check_password_hash(user.password, password):
 
-        jwt_access_token_employee = create_access_token(identity=user_name,expires_delta=timedelta(hours=2))
-        jwt_refresh_token_employee = create_refresh_token(identity=user_name,expires_delta=timedelta(hours=3))
+        jwt_access_token_employee = create_access_token(identity=user_name,expires_delta=timedelta(hours=200))
+        jwt_refresh_token_employee = create_refresh_token(identity=user_name,expires_delta=timedelta(hours=300))
         
         employee_chk_attendance = Attendance.query.filter_by(emp_id=user.emp_id).first()
         if not employee_chk_attendance:
@@ -306,13 +302,9 @@ def employee_login():
         setattr(user, "validity", 1)
         db.session.commit()
         
-        return make_response(
-            jsonify({"status" : "Success", "access_token" : jwt_access_token_employee , "refresh_token" : jwt_refresh_token_employee , "token_expire_time" : 7200}),
-            200)
+        return jsonify({"status" : "Success", "access_token" : jwt_access_token_employee , "refresh_token" : jwt_refresh_token_employee , "token_expire_time" : 7200})
     else:
-        return make_response(
-            jsonify({"status" : "Wrong password"}),
-            401)
+        return jsonify({"status" : "Wrong password"})
 
 
 #   Employee Logout App

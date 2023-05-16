@@ -7,6 +7,7 @@
 
 body {
     font-family: 'Poppins', sans-serif;
+    background-color: #0A4D68;
 }
 
 a {
@@ -19,7 +20,17 @@ a {
     height: 75vh;
 }
 
+input {
+    background-color: transparent;
+}
+
+::-webkit-input-placeholder {
+    color: black;
+    opacity: 60%
+}
+
 .container {
+    background: linear-gradient(45deg, #1C82AD, #03C988);;
     border: 1px solid rgb(203 213 225);
     border-radius: 10px;
     margin: auto;
@@ -35,10 +46,16 @@ a {
     padding: 10px 15px;
     border-radius: 0px 5px 5px 0px;
     border-left: 3px solid rgb(71 85 105);
+    border: 1px solid white;
+    backdrop-filter: blur(6px);
+}
+
+.bold {
+    font-weight: bold;
 }
 
 .role {
-    color: rgb(71 85 105);
+    color: #00337C;
     font-size: small;
     margin-top: -5px;
 }
@@ -76,7 +93,7 @@ a {
 
 .btn {
     padding: 8px 16px;
-    background-color: rgb(71 85 105);
+    background-color: #00337C;
     color: white;
     border-top-right-radius: 7px;
     border-bottom-right-radius: 7px;
@@ -130,7 +147,7 @@ a {
 }
 
 .font-grey {
-    color: rgb(61, 64, 69)
+    color: black;
 }
 
 .opacity-30 {

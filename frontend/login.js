@@ -1,3 +1,5 @@
+import { server } from "./url.js";
+
 const nextPage = () => {
     addMoveOutTransitionEffect();
 
@@ -126,7 +128,7 @@ const sendFormData = () => {
     return new Promise( (resolve, reject) => {
         console.log("Hello")
         var xhr = new XMLHttpRequest();
-        xhr.open("POST", "http://127.0.0.1:5000/login"); 
+        xhr.open("POST", `${server}/login`); 
     
         // This fires up when the connection is successful
         xhr.onload = function(event){ 

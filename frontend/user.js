@@ -1,3 +1,5 @@
+import { server } from "./url.js"
+
 const displayErrorMessage = (message) => {
 
     if (document.getElementById('error-message')) { 
@@ -19,7 +21,7 @@ const displayErrorMessage = (message) => {
 const sendFormData = () => {
     return new Promise( function (resolve, reject) {
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', 'http://127.0.0.1:5000/employee_details'); 
+        xhr.open('POST', `${server}/employee_details`); 
     
         // This fires up when the connection is successful
         xhr.onload = function(event){ 

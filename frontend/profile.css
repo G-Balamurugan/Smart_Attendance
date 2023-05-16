@@ -7,6 +7,7 @@
 
 body {
     font-family: 'Poppins', sans-serif;
+    background-color: #0A4D68;
 }
 
 a {
@@ -39,6 +40,7 @@ a {
 }
 
 .details {
+    background: linear-gradient(45deg, #1C82AD, #03C988);
     padding: 80px 50px 30px 50px;
     width: 100%;
     border: 1px solid rgb(203 213 225);
@@ -49,7 +51,7 @@ a {
 }
 
 .field {
-    color: rgb(71 85 105);
+    color: white;
     /* font-size: small; */
     margin-bottom: -5px;
 }

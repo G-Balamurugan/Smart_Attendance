@@ -8,6 +8,7 @@
 
 body {
     font-family: 'Poppins', sans-serif;
+    background-color: #0A4D68;
 }
 
 a {
@@ -65,14 +66,23 @@ button {
 .primary, .secondary {
     border-style: solid;
     border-width: 2px;
-    border-color: rgb(71 85 105);
+    border-color: #00337C;
     border-radius: 5px;
     cursor: pointer;
     /* margin: 2px 6px; */
 }
 
+input {
+    background-color: transparent;
+}
+
+::-webkit-input-placeholder{
+    color: black;
+    opacity: 60%;
+}
+
 .primary {
-    background-color: rgb(71 85 105);
+    background-color: #00337C;
     color: white;
     padding: 5px 22px;
     font-size: large;
@@ -167,6 +177,8 @@ button {
 
 .container {
     padding: 50px;
+    background: linear-gradient(45deg, #1C82AD, #03C988);;
+    border-radius: 0px 20px 0px 20px;
 }
 
 .header {

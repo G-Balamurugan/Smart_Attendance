@@ -1,4 +1,6 @@
+import { server } from "./url.js"
 
+console.log(server);
 export const fetchEmployees = (currentPage, numberOfRecords) => {
     return new Promise( function (resolve, reject) {
 
@@ -19,7 +21,7 @@ export const fetchEmployees = (currentPage, numberOfRecords) => {
         
         var xhr = new XMLHttpRequest();
 
-        xhr.open("POST", `http://127.0.0.1:5000/${endpoint}`); 
+        xhr.open("POST", `${server}/${endpoint}`); 
     
         xhr.onload = function () { 
 

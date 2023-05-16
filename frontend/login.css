@@ -7,6 +7,7 @@
 
 
 body {
+    background-color: #0A4D68;
     font-family: 'Poppins', sans-serif;
     overflow: hidden;
 
@@ -83,14 +84,14 @@ button {
 .primary, .secondary {
     border-style: solid;
     border-width: 2px;
-    border-color: rgb(71 85 105);
+    border-color: #00337C;
     border-radius: 5px;
     cursor: pointer;
     /* margin: 2px 6px; */
 }
 
 .primary {
-    background-color: rgb(71 85 105);
+    background-color: #00337C;
     color: white;
     padding: 5px 22px;
 }
@@ -169,6 +170,8 @@ button {
 }
 
 .container {
+    background: linear-gradient(45deg, #1C82AD, #03C988);
+    border-radius: 0px 20px 0px 20px;
     padding: 50px;
 }
 
@@ -223,8 +226,9 @@ button {
 }
 
 .link {
-    color:rgb(71 85 105);
+    color:#00337C;
     cursor: pointer;
+    font-weight: bold;
 }
 
 .relative {

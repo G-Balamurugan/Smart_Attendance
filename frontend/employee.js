@@ -1,4 +1,5 @@
 import { fetchEmployees } from './index.js'
+import { server } from './url.js'
 
 const createCard = (name, role, i) => {
     const linkWrapper = document.createElement('a')
@@ -13,6 +14,7 @@ const createCard = (name, role, i) => {
     const smallText = document.createElement('p')
     smallText.textContent = role
     smallText.classList.add('role')
+    smallText.classList.add('bold')
 
     cardContainer.id = i
     smallText.id = i
@@ -117,7 +119,7 @@ const sendEmployeeDetail = (data) => {
     // Assumption that I extracted the values
     console.log('Hello')
     var xhr = new XMLHttpRequest();
-    xhr.open("POST", "http://127.0.0.1:5000/employee_select");
+    xhr.open("POST", `${server}/employee_select`);
 
     xhr.onload = function (event) {
         const res = xhr.response

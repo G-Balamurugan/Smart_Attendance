@@ -18,7 +18,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('1234')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('bala')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 app.config['JWT_SECRET_KEY'] = 'your secret key'
@@ -445,12 +445,9 @@ def employee_select():
         
     today = date.today()
     
-    attendance_perc_chk = Attendance.query.filter_by(id=employee_details_search.id).filter_by(employee_name=employee_details_search.first_name).all()
+    attendance_perc_chk = Attendance.query.filter_by(id=employee_details_search.id).filter_by(employee_name=employee_details_search.first_name).first()
 
-    attendance_perc = 0
-    for i in attendance_perc_chk:
-        if i.day_attendance=="present":
-            attendance_perc+=1
+    attendance_perc = attendance_perc_chk.day_attendance_present
         
     month_chk = Working_days.query.filter_by(month_number=today.month).first()
     print(attendance_perc)
@@ -535,6 +532,30 @@ def employee_details_select():
         return make_response(
         jsonify({'status' : 'User Logged Out..Need to Login'}),
         401)
+
+    
+    today = date.today()
+    
+    employee_details_search = Employee.query.filter_by(first_name=current_user.first_name).filter_by(designation=current_user.designation).first()
+    
+    if not employee_details_search:
+        return make_response(
+            jsonify({"status" : "No Match Found..!"}),
+            401)
+    
+    
+    attendance_perc_chk = Attendance.query.filter_by(id=employee_details_search.id).filter_by(employee_name=employee_details_search.first_name).first()
+    print("///////////",attendance_perc_chk,attendance_perc_chk.employee_name)
+    
+    attendance_perc = attendance_perc_chk.day_attendance_present
+    # for i in attendance_perc_chk:
+    #     if i.day_attendance=="present":
+    #         attendance_perc+=1
+        
+    month_chk = Working_days.query.filter_by(month_number=today.month).first()
+    print(attendance_perc)
+    attendance_perc=(attendance_perc/(month_chk.working_days_count))
+    print(attendance_perc)
     
     output = {}
     
@@ -545,6 +566,7 @@ def employee_details_select():
     output['age']=current_user.age
     output['email']=current_user.email
     output['designation']=current_user.designation
+    output['attendance_percent']=str(attendance_perc)+"%"
     
     return output
 

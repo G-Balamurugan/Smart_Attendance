@@ -11,6 +11,7 @@ pyjwt = "*"
 flask-cors = "*"
 flask-jwt-extended = "*"
 apscheduler = "*"
+gunicorn = "*"
 
 [dev-packages]
 

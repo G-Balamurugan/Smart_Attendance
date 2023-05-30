@@ -18,8 +18,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('bala')
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('1234')
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('bala')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/smart' % quote_plus('1234')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 app.config['JWT_SECRET_KEY'] = 'your secret key'
@@ -555,8 +555,8 @@ def employee_details_select():
         
     month_chk = Working_days.query.filter_by(month_number=today.month).first()
     print(attendance_perc)
-    attendance_perc=(attendance_perc/(month_chk.working_days_count))
-    # attendance_perc=0
+    # attendance_perc=(attendance_perc/(month_chk.working_days_count))
+    attendance_perc=0
     print(attendance_perc)
     
     output = {}

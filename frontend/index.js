@@ -24,7 +24,6 @@ export const fetchEmployees = (currentPage, numberOfRecords) => {
         xhr.open("POST", `${server}/${endpoint}`); 
     
         xhr.onload = function () { 
-
             const res = JSON.parse(xhr.response)
             const statusMsg = res.status ? res.status : res.msg
             console.log(xhr.response)

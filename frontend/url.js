@@ -1,1 +1,1 @@
-export const server = 'http://192.168.1.8:5000'
+export const server = 'http://crafty2543.pythonanywhere.com'

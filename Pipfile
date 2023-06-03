@@ -12,6 +12,7 @@ flask-cors = "*"
 flask-jwt-extended = "*"
 apscheduler = "*"
 gunicorn = "*"
+python-dotenv = "*"
 
 [dev-packages]
 
